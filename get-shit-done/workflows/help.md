@@ -99,6 +99,17 @@ Create detailed execution plan for a specific phase.
 Usage: `/gsd:plan-phase 1`
 Result: Creates `.planning/phases/01-foundation/01-01-PLAN.md`
 
+**`/gsd:analyze-phase <number>`**
+Cross-artifact consistency and coverage analysis before execution.
+
+- Validates REQUIREMENTS ↔ ROADMAP ↔ CONTEXT ↔ PLAN consistency
+- Catches coverage gaps, contradictions, traceability breaks, boundary violations
+- Creates `{phase_num}-ANALYSIS.md` in phase directory
+- Run after `/gsd:plan-phase`, before `/gsd:execute-phase`
+
+Usage: `/gsd:analyze-phase 3`
+Result: Creates `.planning/phases/03-features/03-ANALYSIS.md`
+
 ### Execution
 
 **`/gsd:execute-phase <phase-number>`**
@@ -256,6 +267,19 @@ List pending todos and select one to work on.
 Usage: `/gsd:check-todos`
 Usage: `/gsd:check-todos api`
 
+### Code Review
+
+**`/gsd:review-phase <number>`**
+Multi-perspective code review by parallel Claude subagents.
+
+- Spawns 3 independent reviewers on phase-modified files
+- Compiles deduplicated, prioritized findings into REVIEW.md
+- Supports multi-pass reviews with convergence detection
+- Optional `--fix` flag to auto-apply non-controversial fixes
+
+Usage: `/gsd:review-phase 3`
+Usage: `/gsd:review-phase 3 --fix`
+
 ### User Acceptance Testing
 
 **`/gsd:verify-work [phase]`**
@@ -374,10 +398,12 @@ Usage: `/gsd:join-discord`
 └── phases/
     ├── 01-foundation/
     │   ├── 01-01-PLAN.md
-    │   └── 01-01-SUMMARY.md
+    │   ├── 01-01-SUMMARY.md
+    │   └── 01-ANALYSIS.md
     └── 02-core-features/
         ├── 02-01-PLAN.md
-        └── 02-01-SUMMARY.md
+        ├── 02-01-SUMMARY.md
+        └── 02-ANALYSIS.md
 ```
 
 ## Workflow Modes
@@ -433,6 +459,7 @@ Example config:
 /gsd:new-project        # Unified flow: questioning → research → requirements → roadmap
 /clear
 /gsd:plan-phase 1       # Create plans for first phase
+/gsd:analyze-phase 1    # Cross-artifact consistency check (recommended)
 /clear
 /gsd:execute-phase 1    # Execute all plans in phase
 ```

@@ -552,7 +552,11 @@ Verification: {Passed | Passed with override | Skipped}
 
 ## ▶ Next Up
 
-**Execute Phase {X}** — run all {N} plans
+**Analyze Phase {X}** — cross-artifact consistency check (recommended)
+
+/gsd:analyze-phase {X}
+
+**Execute Phase {X}** — run all {N} plans (skip analysis)
 
 /gsd:execute-phase {X}
 

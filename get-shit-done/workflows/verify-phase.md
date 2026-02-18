@@ -1,7 +1,13 @@
 <purpose>
-Verify phase goal achievement through goal-backward analysis. Check that the codebase delivers what the phase promised, not just that tasks completed.
+Verify phase goal achievement through two-stage review: spec compliance first, then code quality.
 
 Executed by a verification subagent spawned from execute-phase.md.
+
+**Two stages catch different failure modes:**
+- Stage 1 (Spec Compliance): "Does the code deliver what the phase promised?"
+- Stage 2 (Code Quality): "Is the delivered code well-built?"
+
+Code can perfectly match the spec but be poorly written. Code can be beautifully written but miss a requirement. Both stages must pass.
 </purpose>
 
 <core_principle>
@@ -15,6 +21,8 @@ Goal-backward verification:
 3. What must be WIRED for those artifacts to function?
 
 Then verify each level against the actual codebase.
+
+**Stage gate:** Stage 2 does NOT run if Stage 1 has blockers. Fix spec compliance first — there's no point reviewing code quality on code that doesn't deliver the spec.
 </core_principle>
 
 <required_reading>
@@ -42,6 +50,10 @@ ls "$phase_dir"/*-SUMMARY.md "$phase_dir"/*-PLAN.md 2>/dev/null
 
 Extract **phase goal** from ROADMAP.md (the outcome to verify, not tasks) and **requirements** from REQUIREMENTS.md if it exists.
 </step>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- STAGE 1: SPEC COMPLIANCE — Does the code deliver what was planned? -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
 
 <step name="establish_must_haves">
 **Option A: Must-haves in PLAN frontmatter**
@@ -165,6 +177,24 @@ grep -E "Phase ${PHASE_NUM}" .planning/REQUIREMENTS.md 2>/dev/null
 For each requirement: parse description → identify supporting truths/artifacts → status: ✓ SATISFIED / ✗ BLOCKED / ? NEEDS HUMAN.
 </step>
 
+<step name="stage1_gate">
+**Stage 1 Gate: Evaluate spec compliance before proceeding to code quality.**
+
+Determine spec compliance status:
+- **spec_passed:** All truths VERIFIED, all artifacts pass levels 1-3, all key links WIRED, all requirements SATISFIED
+- **spec_gaps:** Any truth FAILED, artifact MISSING/STUB, key link NOT_WIRED, or requirement BLOCKED
+
+**If spec_gaps:** Record all spec issues. Proceed to Stage 2 ONLY for informational purposes — spec gaps are the primary blockers.
+
+**If spec_passed:** Proceed to Stage 2 as the determining gate.
+
+Report stage 1 result in VERIFICATION.md under `## Stage 1: Spec Compliance`.
+</step>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- STAGE 2: CODE QUALITY — Is the delivered code well-built?          -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
 <step name="code_quality_review">
 Before scanning for anti-patterns, perform a lightweight code quality review on files modified in this phase.
 
@@ -227,13 +257,32 @@ Format each as: Test Name → What to do → Expected result → Why can't verif
 </step>
 
 <step name="determine_status">
-**passed:** All truths VERIFIED, all artifacts pass levels 1-3, all key links WIRED, no blocker anti-patterns.
+Combine both stages into final status:
 
-**gaps_found:** Any truth FAILED, artifact MISSING/STUB, key link NOT_WIRED, or blocker found.
+**passed:** Stage 1 spec_passed AND Stage 2 quality_passed (lint + types + tests pass, no blocker anti-patterns).
 
-**human_needed:** All automated checks pass but human verification items remain.
+**gaps_found:** Stage 1 spec_gaps OR Stage 2 quality_failed. Report which stage(s) failed.
 
-**Score:** `verified_truths / total_truths`
+**human_needed:** Both stages pass automated checks but human verification items remain.
+
+**Score:** `verified_truths / total_truths` (Stage 1) + `quality_checks_passed / total_quality_checks` (Stage 2)
+
+**In the report, separate the two stages clearly:**
+
+```markdown
+## Stage 1: Spec Compliance
+Status: {spec_passed | spec_gaps}
+Score: {N}/{M} truths verified
+
+[truths table, artifacts table, wiring table, requirements table]
+
+## Stage 2: Code Quality
+Status: {quality_passed | quality_failed}
+
+[lint/types/tests results, anti-pattern scan, quality issues]
+```
+
+This separation lets fix plans target the right problem: spec gaps need implementation work, quality gaps need refactoring work.
 </step>
 
 <step name="generate_fix_plans">
@@ -268,16 +317,24 @@ Orchestrator routes: `passed` → update_roadmap | `gaps_found` → create/execu
 </process>
 
 <success_criteria>
+
+**Stage 1: Spec Compliance**
 - [ ] Must-haves established (from frontmatter or derived)
 - [ ] All truths verified with status and evidence
 - [ ] All artifacts checked at all three levels
 - [ ] All key links verified
 - [ ] Requirements coverage assessed (if applicable)
-- [ ] Code quality gate passed (lint, types, tests)
+- [ ] Stage 1 gate evaluated (spec_passed | spec_gaps)
+
+**Stage 2: Code Quality**
+- [ ] Code quality gate run (lint, types, tests)
 - [ ] Anti-patterns scanned and categorized
 - [ ] Human verification items identified
-- [ ] Overall status determined
-- [ ] Fix plans generated (if gaps_found)
-- [ ] VERIFICATION.md created with complete report
+
+**Final**
+- [ ] Overall status determined from both stages
+- [ ] Fix plans generated (if gaps_found) — tagged by stage (spec vs quality)
+- [ ] VERIFICATION.md created with two-stage report
 - [ ] Results returned to orchestrator
+
 </success_criteria>

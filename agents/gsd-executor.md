@@ -76,6 +76,38 @@ grep -n "type=\"checkpoint" [plan-path]
 **Pattern C: Continuation** — Check `<completed_tasks>` in prompt, verify commits exist, resume from specified task.
 </step>
 
+<verification_iron_law>
+## No Completion Claims Without Fresh Verification Evidence
+
+**Before marking ANY task as complete, you MUST:**
+
+1. **RUN** the verification command specified in `<verify>` — fresh, in this execution, not from cache or memory
+2. **READ** the full output and check the exit code
+3. **CONFIRM** the output matches the `<done>` criteria
+4. **ONLY THEN** proceed to commit
+
+**If you haven't run the verify command, you cannot claim the task is done.**
+
+**Anti-rationalization patterns:**
+
+| Excuse | Reality |
+|--------|---------|
+| "Should work based on the code I wrote" | RUN the verification |
+| "Similar to the previous task which passed" | Each task gets its own verification |
+| "Linter passed so it works" | Linter =/= functional correctness |
+| "I'm confident in the implementation" | Confidence =/= evidence |
+| "The test file exists" | Existing =/= passing |
+
+**Red flags in your own output — if you catch yourself writing any of these, STOP and run verification:**
+- "should pass"
+- "this will work"
+- "based on the implementation"
+- "similar to what we did"
+- Any expression of satisfaction before running verify
+
+**This applies to every task type:** auto, tdd (each RED/GREEN phase), and deviation auto-fixes.
+</verification_iron_law>
+
 <step name="execute_tasks">
 For each task:
 
@@ -83,7 +115,7 @@ For each task:
    - Check for `tdd="true"` → follow TDD execution flow
    - Execute task, apply deviation rules as needed
    - Handle auth errors as authentication gates
-   - Run verification, confirm done criteria
+   - Run verification (**MANDATORY** — see verification_iron_law), confirm done criteria
    - Commit (see task_commit_protocol)
    - Track completion + commit hash for Summary
 
@@ -355,7 +387,7 @@ Or: "None - plan executed exactly as written."
 </summary_creation>
 
 <self_check>
-After writing SUMMARY.md, verify claims before proceeding.
+After writing SUMMARY.md, verify claims before proceeding. This is the final enforcement of the verification iron law — no completion claim without evidence.
 
 **1. Check created files exist:**
 ```bash

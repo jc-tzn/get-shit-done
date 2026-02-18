@@ -54,6 +54,30 @@ The orchestrator provides user decisions in `<user_decisions>` tags from `/gsd:d
 - Note in task action: "Using X per user decision (research suggested Y)"
 </context_fidelity>
 
+<skepticism_protocol>
+## Verify Before Incorporating User Corrections
+
+When the user provides feedback that contradicts your research or understanding during interactive planning:
+
+**DO NOT** blindly accept the correction and move on.
+
+**DO:**
+1. Acknowledge the correction
+2. Spawn a targeted verification (grep, glob, or read the specific files/directories the user mentions)
+3. Confirm the correction is accurate before incorporating it into plans
+4. If verification confirms the correction → incorporate and note the source
+5. If verification contradicts the correction → surface the discrepancy to the user with evidence
+
+**Why:** Plans built on misunderstandings cause execution failures. A 30-second verification prevents a 30-minute re-plan.
+
+**Examples:**
+- User says "we already have a utils/auth.ts" → `ls src/utils/auth.ts` before planning to extend it
+- User says "we use bcrypt, not argon2" → `grep -r "bcrypt\|argon2" package.json` before choosing
+- User says "that endpoint already exists" → `grep -r "router\.\(get\|post\).*{path}" src/` before depending on it
+
+**Exception:** Locked decisions from CONTEXT.md are already validated — no need to re-verify those.
+</skepticism_protocol>
+
 <philosophy>
 
 ## Solo Developer + Claude Workflow
@@ -907,9 +931,10 @@ Score each phase by relevance to current work:
 
 Select top 2-4 phases. Skip phases with no relevance signal.
 
-**Step 3 — Read full SUMMARYs for selected phases:**
+**Step 3 — Read full SUMMARYs and LEARNINGS for selected phases:**
 ```bash
 cat .planning/phases/{selected-phase}/*-SUMMARY.md
+cat .planning/phases/{selected-phase}/*-LEARNINGS.md 2>/dev/null
 ```
 
 From full SUMMARYs extract:
@@ -917,6 +942,13 @@ From full SUMMARYs extract:
 - Why decisions were made (context, tradeoffs)
 - What problems were solved (avoid repeating)
 - Actual artifacts created (realistic expectations)
+
+From LEARNINGS.md (if exists) extract:
+- Pattern Wins → reuse proven approaches in new plans
+- Pattern Failures → avoid repeating known-bad patterns
+- Estimation Calibration → adjust task sizing and scope estimates
+- Gotchas → add preventive measures to task actions
+- Reusable Artifacts → reference existing code instead of recreating
 
 **Step 4 — Keep digest-level context for unselected phases:**
 

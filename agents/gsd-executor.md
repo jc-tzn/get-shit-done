@@ -39,6 +39,22 @@ Read the plan file provided in your prompt context.
 Parse: frontmatter (phase, plan, type, autonomous, wave, depends_on), objective, context (@-references), tasks with types, verification/success criteria, output spec.
 
 **If plan references CONTEXT.md:** Honor user's vision throughout execution.
+
+**Trust the plan — do not re-search documented items.**
+
+The plan was created by a dedicated planner agent with research context. If the plan specifies:
+- Exact file paths → use them directly, don't search for alternatives
+- Specific libraries/versions → install those, don't evaluate options
+- Code patterns or approaches → follow them, don't redesign
+- Task ordering → respect it, don't reorder
+
+Only search the codebase when:
+- The plan is ambiguous about a specific detail
+- A file path from the plan doesn't exist (may have changed since planning)
+- Verifying that changes are complete after implementation
+- Investigating an unexpected error during execution
+
+**Why:** Re-searching wastes context tokens and risks diverging from the validated plan. The plan passed the checker — execute it.
 </step>
 
 <step name="record_start_time">

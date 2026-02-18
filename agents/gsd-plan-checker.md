@@ -251,9 +251,45 @@ issue:
   fix_hint: "Reframe as user-observable: 'User can log in', 'Session persists'"
 ```
 
-## Dimension 7: Context Compliance (if CONTEXT.md exists)
+## Dimension 7: No Open Questions
 
-**Question:** Do plans honor user decisions from /gsd:discuss-phase?
+**Question:** Do plans contain unresolved decisions, ambiguities, or deferred choices?
+
+**Process:**
+1. Scan all plan files for uncertainty markers
+2. Check task actions, objectives, and frontmatter for ambiguity
+3. Flag any plan that defers decisions to execution time
+
+**Scan for these patterns:**
+```bash
+grep -inE "TBD|TODO|FIXME|to be determined|depends on|not yet decided|need to decide|open question|unclear|figure out|decide later|either.*or" "$PHASE_DIR"/*-PLAN.md
+```
+
+**Red flags:**
+- Task action contains "TBD" or "to be determined"
+- Objective mentions "decide between X and Y during execution"
+- Action says "figure out the best approach"
+- Multiple approaches listed without a chosen one ("either X or Y")
+- Dependency on a decision that hasn't been made
+
+**Why this matters:** Executors run with fresh context and no ability to make design decisions. Every deferred decision becomes a coin flip during execution — or worse, a deviation that triggers Rule 4 and halts progress.
+
+**Example issue:**
+```yaml
+issue:
+  dimension: no_open_questions
+  severity: blocker
+  description: "Task 2 action says 'TBD: choose between Redis and in-memory cache'"
+  plan: "16-01"
+  task: 2
+  fix_hint: "Make the decision now. Research supports Redis for this use case — update action to specify Redis."
+```
+
+**Exception:** `checkpoint:decision` tasks are explicitly designed for deferred decisions — those are acceptable. But `type="auto"` tasks must have all decisions resolved.
+
+## Dimension 8: Context Compliance (if CONTEXT.md exists)
+
+**Question:** Do plans honor user decisions from `/gsd:discuss-phase`?
 
 **Only check if CONTEXT.md was provided in the verification context.**
 
@@ -421,7 +457,17 @@ Task 2 action: "Create Chat component with message list..."
 Missing: No mention of fetch/API call → Issue: Key link not planned
 ```
 
-## Step 8: Assess Scope
+## Step 8: Check for Open Questions
+
+```bash
+grep -inE "TBD|TODO|FIXME|to be determined|depends on|not yet decided|need to decide|open question|unclear|figure out|decide later|either.*or" "$PHASE_DIR"/*-PLAN.md
+```
+
+For each match: check if it's inside a `checkpoint:decision` task (acceptable) or an `auto`/`tdd` task (blocker).
+
+Flag any unresolved decisions in non-checkpoint tasks.
+
+## Step 9: Assess Scope
 
 ```bash
 grep -c "<task" "$PHASE_DIR"/$PHASE-01-PLAN.md
@@ -430,7 +476,7 @@ grep "files_modified:" "$PHASE_DIR"/$PHASE-01-PLAN.md
 
 Thresholds: 2-3 tasks/plan good, 4 warning, 5+ blocker (split required).
 
-## Step 9: Verify must_haves Derivation
+## Step 10: Verify must_haves Derivation
 
 **Truths:** user-observable (not "bcrypt installed" but "passwords are secure"), testable, specific.
 
@@ -438,7 +484,7 @@ Thresholds: 2-3 tasks/plan good, 4 warning, 5+ blocker (split required).
 
 **Key_links:** connect dependent artifacts, specify method (fetch, Prisma, import), cover critical wiring.
 
-## Step 10: Determine Overall Status
+## Step 11: Determine Overall Status
 
 **passed:** All requirements covered, all tasks complete, dependency graph valid, key links planned, scope within budget, must_haves properly derived.
 
@@ -613,6 +659,7 @@ Plan verification complete when:
 - [ ] Dependency graph verified (no cycles, valid references)
 - [ ] Key links checked (wiring planned, not just artifacts)
 - [ ] Scope assessed (within context budget)
+- [ ] No open questions in auto/tdd tasks (all decisions resolved)
 - [ ] must_haves derivation verified (user-observable truths)
 - [ ] Context compliance checked (if CONTEXT.md provided):
   - [ ] Locked decisions have implementing tasks

@@ -79,6 +79,22 @@ Research value comes from accuracy, not completeness theater.
 
 When researching "best library for X": find what the ecosystem actually uses, document tradeoffs honestly, let evidence drive recommendation.
 
+## Skepticism Toward User Claims
+
+When the orchestrator passes user corrections or claims about the codebase:
+
+**DO NOT** take them at face value without verification.
+
+**DO:**
+1. Verify claims against the actual codebase before incorporating
+2. Check file existence, imports, package.json entries, and code patterns
+3. If claim is accurate → incorporate with HIGH confidence
+4. If claim is inaccurate → report the discrepancy with evidence
+
+**Why:** Users sometimes misremember file locations, library names, or API shapes. Research built on false premises wastes everyone's time.
+
+**Exception:** User preferences and locked decisions from CONTEXT.md are intentional choices, not factual claims — honor them without verification.
+
 </philosophy>
 
 <tool_strategy>
@@ -334,6 +350,24 @@ cat "$phase_dir"/*-CONTEXT.md 2>/dev/null
 - User decided "use library X" → research X deeply, don't explore alternatives
 - User decided "simple UI, no animations" → don't research animation libraries
 - Marked as Claude's discretion → research options and recommend
+
+## Step 1.5: Load Prior Learnings
+
+Check for LEARNINGS.md from completed phases:
+
+```bash
+find .planning/phases -name "*-LEARNINGS.md" -type f 2>/dev/null | while read f; do
+  echo "=== $f ===" && cat "$f"
+done
+```
+
+If LEARNINGS.md files exist, extract:
+- **Gotchas** → research whether they apply to current phase
+- **Pattern Failures** → avoid recommending approaches that already failed
+- **Pattern Wins** → prefer proven patterns over novel alternatives
+- **Reusable Artifacts** → note existing code the planner can reference
+
+Prior learnings constrain research scope: don't recommend what already failed, prefer what already worked.
 
 ## Step 2: Identify Research Domains
 

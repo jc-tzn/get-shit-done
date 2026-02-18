@@ -317,6 +317,7 @@ Present summary:
 ```
 All tests passed. Ready to continue.
 
+- `/gsd:compound {phase}` — Capture learnings before moving on (recommended)
 - `/gsd:plan-phase {next}` — Plan next phase
 - `/gsd:execute-phase {next}` — Execute next phase
 ```

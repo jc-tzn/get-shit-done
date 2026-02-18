@@ -165,6 +165,46 @@ grep -E "Phase ${PHASE_NUM}" .planning/REQUIREMENTS.md 2>/dev/null
 For each requirement: parse description → identify supporting truths/artifacts → status: ✓ SATISFIED / ✗ BLOCKED / ? NEEDS HUMAN.
 </step>
 
+<step name="code_quality_review">
+Before scanning for anti-patterns, perform a lightweight code quality review on files modified in this phase.
+
+**Extract modified files from SUMMARY.md:**
+```bash
+grep -h "files_modified\|key-files\|created\|modified" "$PHASE_DIR"/*-SUMMARY.md 2>/dev/null | grep -oE "[a-zA-Z0-9_./-]+\.[a-z]+" | sort -u
+```
+
+**For each modified file, check:**
+
+1. **Linting** — Run the project's linter if available:
+```bash
+npm run lint -- --quiet 2>/dev/null || npx eslint {file} --quiet 2>/dev/null
+```
+
+2. **Type checking** — Run type checker if TypeScript:
+```bash
+npx tsc --noEmit 2>/dev/null | grep -c "error" || echo "0"
+```
+
+3. **Test execution** — Run related tests:
+```bash
+npm test -- --passWithNoTests 2>/dev/null
+```
+
+**Record results as a quality gate:**
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Lint | pass/fail | {error count} |
+| Types | pass/fail | {error count} |
+| Tests | pass/fail | {failure count} |
+
+**If any check fails:** Record as a blocker in the verification report. These are automated quality issues that should be fixed before UAT.
+
+**If all pass:** Proceed to anti-pattern scanning.
+
+This gate ensures code quality issues are caught programmatically before asking the user to manually test features.
+</step>
+
 <step name="scan_antipatterns">
 Extract files modified in this phase from SUMMARY.md, scan each:
 
@@ -233,6 +273,7 @@ Orchestrator routes: `passed` → update_roadmap | `gaps_found` → create/execu
 - [ ] All artifacts checked at all three levels
 - [ ] All key links verified
 - [ ] Requirements coverage assessed (if applicable)
+- [ ] Code quality gate passed (lint, types, tests)
 - [ ] Anti-patterns scanned and categorized
 - [ ] Human verification items identified
 - [ ] Overall status determined

@@ -341,11 +341,143 @@ Display: `Max iterations reached. {N} issues remain:` + issue list
 
 Offer: 1) Force proceed, 2) Provide guidance and retry, 3) Abandon
 
-## 13. Present Final Status
+## 13. Annotation Cycle (Interactive Mode Only)
+
+**If `--auto` flag or `AUTO_CFG` is true:** Skip annotation entirely — proceed to step 14.
+
+**If interactive mode:**
+
+After plans pass the checker (or user force-proceeds), offer the user a chance to review and annotate the plans directly.
+
+Display:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GSD ► PLANS READY FOR REVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Phase {X}: {Name} — {N} plan(s) created and verified.
+
+You can now review the plans and add inline annotations:
+
+  {phase_dir}/{phase}-01-PLAN.md
+  {phase_dir}/{phase}-02-PLAN.md
+  ...
+
+Open the plan files in your editor, add notes anywhere
+(corrections, overrides, questions), then come back.
+```
+
+Use AskUserQuestion:
+- header: "Review"
+- question: "Review and annotate plans?"
+- options:
+  - "Plans look good" — Proceed to execution
+  - "I added notes" — I've annotated the plan files, incorporate my changes
+  - "Let me review first" — I'll check them and come back
+
+**If "Plans look good":** Proceed to step 14.
+
+**If "Let me review first":** Wait for user. When they return, re-ask the same question.
+
+**If "I added notes":** Start the annotation incorporation loop:
+
+### Annotation Incorporation Loop (max 6 iterations)
+
+Track `annotation_count` (starts at 1).
+
+**Step A: Read annotated plans**
+
+```bash
+ANNOTATED_PLANS=$(cat "${PHASE_DIR}"/*-PLAN.md 2>/dev/null)
+```
+
+**Step B: Spawn planner in annotation mode**
+
+```
+Task(
+  prompt="First, read ~/.claude/agents/gsd-planner.md for your role and instructions.\n\n" + annotation_prompt,
+  subagent_type="general-purpose",
+  model="{planner_model}",
+  description="Incorporate annotations for Phase {phase} (round #{annotation_count})"
+)
+```
+
+Annotation prompt:
+
+```markdown
+<annotation_context>
+**Phase:** {phase_number}
+**Mode:** annotation
+**Annotation round:** {annotation_count}
+
+**Annotated plans (user has added inline notes):**
+{annotated_plans}
+
+**Phase Context:** {context_content}
+**Requirements:** {requirements_content}
+**Research:** {research_content}
+</annotation_context>
+
+<instructions>
+The user has added inline notes directly into the PLAN.md files.
+
+Notes may appear as:
+- Comments in the markdown (lines starting with `>`, `//`, `NOTE:`, `TODO:`, or any text that doesn't fit the plan structure)
+- Corrections to existing task actions, file paths, or approaches
+- New constraints or requirements added inline
+- Questions that need answers (address them in the plan)
+- Deletions or strikethroughs indicating things to remove
+
+For each note found:
+1. Understand the user's intent
+2. Incorporate the change into the plan (update tasks, reorder, add, remove as needed)
+3. Remove the note itself after incorporating (the plan should be clean after processing)
+4. If a note conflicts with a locked decision from CONTEXT.md, keep the user's note (user's latest input takes precedence)
+
+After incorporating all notes:
+- Verify frontmatter is still valid (wave, depends_on, files_modified, must_haves)
+- Verify task structure is complete (every task has name, files, action, verify, done)
+- Update the plan files on disk
+
+Return:
+
+## ANNOTATIONS INCORPORATED
+
+**Round:** {annotation_count}
+**Notes found:** {N}
+**Changes made:**
+- {summary of each change}
+
+**Plans updated:** {list of plan files modified}
+</instructions>
+```
+
+**Step C: Handle planner return**
+
+Display changes summary to user. Re-ask:
+
+Use AskUserQuestion:
+- header: "Review"
+- question: "Plans updated with your notes. Review again?"
+- options:
+  - "Plans look good" — Proceed to execution
+  - "I added more notes" — Another round of annotations
+  - "Let me review" — I'll check and come back
+
+**If "Plans look good":** Proceed to step 14.
+**If "I added more notes":** Increment `annotation_count`, loop back to Step A.
+**If "Let me review":** Wait for user, re-ask.
+
+**If `annotation_count` >= 6:** Display: `Max annotation rounds reached. Proceeding with current plans.` → Step 14.
+
+**After any annotation round:** Re-run the plan checker (step 10) to verify annotations didn't break plan quality. If checker finds issues, show them inline but don't block — user's annotations take precedence.
+
+## 14. Present Final Status
 
 Route to `<offer_next>` OR `auto_advance` depending on flags/config.
 
-## 14. Auto-Advance Check
+## 15. Auto-Advance Check
 
 Check for auto-advance trigger:
 
@@ -431,6 +563,7 @@ Verification: {Passed | Passed with override | Skipped}
 **Also available:**
 - cat .planning/phases/{phase-dir}/*-PLAN.md — review plans
 - /gsd:plan-phase {X} --research — re-research first
+- Open plans in editor, add notes, then say "I added notes" — annotation cycle
 
 ───────────────────────────────────────────────────────────────
 </offer_next>
@@ -447,6 +580,9 @@ Verification: {Passed | Passed with override | Skipped}
 - [ ] Plans created (PLANNING COMPLETE or CHECKPOINT handled)
 - [ ] gsd-plan-checker spawned with CONTEXT.md
 - [ ] Verification passed OR user override OR max iterations with user decision
+- [ ] Annotation cycle offered (interactive mode) — user can review, annotate, iterate
+- [ ] User annotations incorporated (if any) with clean plan output
+- [ ] Post-annotation re-check run (if annotations were made)
 - [ ] User sees status between agent spawns
 - [ ] User knows next steps
 </success_criteria>

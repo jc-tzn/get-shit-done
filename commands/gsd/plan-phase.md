@@ -14,11 +14,13 @@ allowed-tools:
   - mcp__context7__*
 ---
 <objective>
-Create executable phase prompts (PLAN.md files) for a roadmap phase with integrated research and verification.
+Create executable phase prompts (PLAN.md files) for a roadmap phase with integrated research, verification, and user annotation.
 
-**Default flow:** Research (if needed) → Plan → Verify → Done
+**Default flow:** Research (if needed) → Plan → Verify → Annotate (interactive) → Done
 
-**Orchestrator role:** Parse arguments, validate phase, research domain (unless skipped), spawn gsd-planner, verify with gsd-plan-checker, iterate until pass or max iterations, present results.
+In interactive mode, after plans pass the checker, the user can open the PLAN.md files in their editor, add inline notes (corrections, overrides, questions), and send Claude back to incorporate them. This annotation cycle can repeat up to 6 times, turning plans into shared mutable state between user and Claude.
+
+**Orchestrator role:** Parse arguments, validate phase, research domain (unless skipped), spawn gsd-planner, verify with gsd-plan-checker, iterate until pass or max iterations, offer annotation cycle, present results.
 </objective>
 
 <execution_context>

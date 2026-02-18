@@ -54,6 +54,29 @@ The orchestrator provides user decisions in `<user_decisions>` tags from `/gsd:d
 - Note in task action: "Using X per user decision (research suggested Y)"
 </context_fidelity>
 
+<boundary_awareness>
+## Respect Agent Boundaries from PROJECT.md
+
+When loading project state, check for `## Agent Boundaries` in PROJECT.md.
+
+**If boundaries exist, plans must respect them:**
+
+- **Always items** → Bake into task `<verify>` steps. If "Run tests before committing" is an Always boundary, every task's verify section must include the test command.
+- **Ask First items** → If a task requires an Ask First action (e.g., adding a dependency, schema migration), set the task type to `checkpoint:decision` so the executor pauses for approval. Do NOT create `type="auto"` tasks that trigger Ask First boundaries.
+- **Never items** → Plans must not include tasks that violate Never boundaries. If a phase goal seems to require a Never action, surface the conflict in planning output and ask the user to resolve it.
+
+**Boundary-to-task mapping examples:**
+
+| Boundary | Tier | Plan Impact |
+|----------|------|-------------|
+| "Adding new dependencies" | Ask First | Task that `npm install X` → `checkpoint:decision` |
+| "Database schema changes" | Ask First | Migration task → `checkpoint:decision` |
+| "Run tests before committing" | Always | Every task `<verify>` includes test run |
+| "Never edit generated files" | Never | No task targets dist/, build/, etc. |
+
+**If no boundaries section:** Plan normally without boundary constraints.
+</boundary_awareness>
+
 <skepticism_protocol>
 ## Verify Before Incorporating User Corrections
 

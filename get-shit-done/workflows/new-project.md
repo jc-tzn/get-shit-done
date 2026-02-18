@@ -313,6 +313,63 @@ Infer Validated requirements from existing code:
 - [Exclusion 1] — [why]
 ```
 
+**Agent Boundaries:**
+
+Initialize with defaults from the template. The three-tier boundary system controls what agents can do autonomously.
+
+**If auto mode:** Use defaults as-is. No customization prompt.
+
+**If interactive mode:** After writing PROJECT.md, present the boundaries for customization:
+
+```
+## Agent Boundaries
+
+These defaults control what agents can do without asking. Customize for your project.
+
+### Always (proceed without asking)
+- Run tests before committing code
+- Run lint/typecheck before committing code
+- Read the full file before editing it
+- Use existing utils/components before creating new ones
+- Follow patterns from codebase map (CONVENTIONS.md)
+- Commit atomically — one concern per commit
+- Verify changes compile after editing
+
+### Ask First (pause for human approval)
+- Adding new dependencies
+- Database schema changes or migrations
+- Changing API contracts (breaking changes)
+- Modifying auth/authorization logic
+- Deleting files or removing features
+- Changing CI/CD or deployment config
+- Restructuring directories or introducing new patterns
+
+### Never (hard stops)
+- Commit secrets, API keys, tokens, or passwords
+- Push directly to main/develop
+- Edit generated files (dist/, build/, .next/, node_modules/)
+- Remove or skip a failing test without explicit approval
+- Hardcode environment-specific values (URLs, ports, keys)
+- Commit debug artifacts (console.log, debugger statements)
+- Modify lock files manually
+```
+
+Use AskUserQuestion:
+- header: "Boundaries"
+- question: "Want to customize agent boundaries?"
+- options:
+  - "Use defaults" — These look good
+  - "Customize" — I want to add, remove, or move items
+
+**If "Customize":** Ask inline what changes they want. Common customizations:
+- Move items between tiers ("adding dependencies is fine, don't ask")
+- Add project-specific rules ("never touch the billing module")
+- Remove irrelevant rules (no TypeScript? drop the type rules)
+
+Apply changes to PROJECT.md before committing.
+
+**If "Use defaults":** Proceed with template defaults.
+
 **Key Decisions:**
 
 Initialize with any decisions made during questioning:

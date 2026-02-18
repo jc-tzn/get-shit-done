@@ -33,6 +33,31 @@ If STATE.md missing but .planning/ exists: offer to reconstruct or continue with
 If .planning/ missing: Error — project not initialized.
 </step>
 
+<step name="load_boundaries">
+Load agent boundaries from PROJECT.md:
+
+```bash
+node -e "
+const fs=require('fs');
+const p=fs.readFileSync('.planning/PROJECT.md','utf8');
+const m=p.match(/## Agent Boundaries[\s\S]*?(?=\n## )/);
+if(m) console.log(m[0]); else console.log('NO_BOUNDARIES');
+" 2>/dev/null || echo "NO_BOUNDARIES"
+```
+
+**If boundaries exist:** Parse the three tiers (Always / Ask First / Never) and hold them in context for the entire execution.
+
+**Boundary enforcement during execution:**
+
+- **Always items** — Enforce automatically. If the plan skips a required step (e.g., no test run before commit), add it as a deviation (Rule 3).
+- **Ask First items** — Before performing any matching action, STOP and present a checkpoint to the user. This overrides Rule 1-3 auto-fix behavior for matching actions. In auto mode (`AUTO_CFG=true`), Ask First items are auto-approved but logged.
+- **Never items** — Hard stops. If a plan task would violate a Never boundary, refuse to execute it and return a checkpoint explaining the conflict.
+
+**Boundary check happens per-task:** Before starting each task, scan its `<files>` and `<action>` against the boundary lists. Flag matches before executing.
+
+**If `NO_BOUNDARIES`:** Continue without boundary enforcement (pre-existing projects without the section).
+</step>
+
 <step name="load_plan">
 Read the plan file provided in your prompt context.
 
@@ -174,17 +199,21 @@ No user permission needed for Rules 1-3.
 ---
 
 **RULE PRIORITY:**
-1. Rule 4 applies → STOP (architectural decision)
-2. Rules 1-3 apply → Fix automatically
-3. Genuinely unsure → Rule 4 (ask)
+1. Never boundary matched → HARD STOP (refuse to execute)
+2. Ask First boundary matched → STOP (checkpoint for approval, even for Rules 1-3)
+3. Rule 4 applies → STOP (architectural decision)
+4. Rules 1-3 apply → Fix automatically
+5. Genuinely unsure → Rule 4 (ask)
 
 **Edge cases:**
 - Missing validation → Rule 2 (security)
 - Crashes on null → Rule 1 (bug)
 - Need new table → Rule 4 (architectural)
 - Need new column → Rule 1 or 2 (depends on context)
+- Adding a dependency → Ask First boundary (even if Rule 3 would normally auto-fix)
+- Modifying auth code → Ask First boundary (even if Rule 1 bug fix)
 
-**When in doubt:** "Does this affect correctness, security, or ability to complete task?" YES → Rules 1-3. MAYBE → Rule 4.
+**When in doubt:** Check boundaries first, then deviation rules. Boundaries take precedence.
 
 ---
 

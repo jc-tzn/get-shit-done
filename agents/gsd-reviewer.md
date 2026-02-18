@@ -43,6 +43,10 @@ Review each file holistically across ALL of these areas:
 - **Sensitive data** — PII logged to console, sensitive fields in error responses, user data in URLs, missing data sanitization
 - **Input validation** — missing validation at system boundaries, trusting client input, missing rate limiting on sensitive endpoints
 
+### Boundary Violations
+- **Never boundaries** — changes that violate Never rules from PROJECT.md (committed secrets, edits to generated files, hardcoded env values, removed tests without approval)
+- **Always boundaries skipped** — required actions that were not performed (missing test runs, missing lint, direct file edits without reading first)
+
 ### Performance & Maintainability
 - **N+1 queries** — unbatched database/API calls in loops
 - **Rendering** — unnecessary re-renders, missing memoization on expensive computations, unstable references in dependency arrays

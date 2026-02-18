@@ -55,6 +55,41 @@ One sentence that drives prioritization when tradeoffs arise.]
 
 Common types: Tech stack, Timeline, Budget, Dependencies, Compatibility, Performance, Security
 
+## Agent Boundaries
+
+<!-- Three-tier rules that ALL agents (planner, executor, reviewer) must follow.
+     Customize per project. Defaults populated during initialization. -->
+
+### Always (proceed without asking)
+
+- Run tests before committing code
+- Run lint/typecheck before committing code
+- Read the full file before editing it
+- Use existing utils/components before creating new ones
+- Follow patterns from codebase map (CONVENTIONS.md)
+- Commit atomically — one concern per commit
+- Verify changes compile after editing
+
+### Ask First (pause for human approval)
+
+- Adding new dependencies
+- Database schema changes or migrations
+- Changing API contracts (breaking changes)
+- Modifying auth/authorization logic
+- Deleting files or removing features
+- Changing CI/CD or deployment config
+- Restructuring directories or introducing new patterns
+
+### Never (hard stops)
+
+- Commit secrets, API keys, tokens, or passwords
+- Push directly to main/develop
+- Edit generated files (dist/, build/, .next/, node_modules/)
+- Remove or skip a failing test without explicit approval
+- Hardcode environment-specific values (URLs, ports, keys)
+- Commit debug artifacts (console.log, debugger statements)
+- Modify lock files manually
+
 ## Key Decisions
 
 <!-- Decisions that constrain future work. Add throughout project lifecycle. -->
@@ -108,6 +143,15 @@ Common types: Tech stack, Timeline, Budget, Dependencies, Compatibility, Perform
 - Hard limits on implementation choices
 - Tech stack, timeline, budget, compatibility, dependencies
 - Include the "why" — constraints without rationale get questioned
+
+**Agent Boundaries:**
+- Three-tier system controlling what agents can do autonomously
+- **Always:** Safe actions agents perform without asking. Must happen every time.
+- **Ask First:** High-impact actions requiring human approval before proceeding. Agent pauses and presents the action for confirmation.
+- **Never:** Hard stops. Agent must not do these under any circumstances.
+- Defaults are populated during `/gsd:new-project`. Customize per project.
+- Add project-specific boundaries as they emerge (e.g., "Never touch the billing module", "Always use our internal design system")
+- Executor checks these before acting; reviewer flags violations
 
 **Key Decisions:**
 - Significant choices that affect future work

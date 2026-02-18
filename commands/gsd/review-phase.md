@@ -11,11 +11,15 @@ allowed-tools:
   - Task
 ---
 <objective>
-Run parallel code reviews from three distinct perspectives on phase-modified files. Compiles deduplicated, prioritized findings into {phase_num}-REVIEW.md.
+Run parallel code reviews using 3 independent Claude subagents on phase-modified files. Compiles deduplicated, prioritized findings into {phase_num}-REVIEW.md.
 
-Purpose: Catch logic errors, security issues, architecture drift, and performance problems that automated tooling (lint/types/tests) misses. Fills the gap between Stage 2 (automated quality) and UAT (manual testing).
+Catches logic errors, security issues, architecture drift, and performance problems that automated tooling misses. Fills the gap between Stage 2 (automated quality) and UAT (manual testing).
 
-Output: {phase_num}-REVIEW.md in the phase directory. Critical findings block UAT.
+Supports multi-pass reviews: detects prior REVIEW.md files, marks pass number, and adjusts reviewer focus to avoid re-litigating fixed issues. Assesses convergence to prevent infinite review loops.
+
+With `--fix`: auto-applies non-controversial fixes (consensus suggestions, localized warnings) and commits them. Critical findings always require human decision.
+
+Output: {phase_num}-REVIEW.md in the phase directory.
 </objective>
 
 <execution_context>
@@ -25,6 +29,7 @@ Output: {phase_num}-REVIEW.md in the phase directory. Critical findings block UA
 <context>
 Phase: $ARGUMENTS
 - Required: phase number (e.g., "4")
+- Optional: `--fix` flag to auto-apply non-controversial findings
 
 @.planning/STATE.md
 @.planning/ROADMAP.md
@@ -32,5 +37,5 @@ Phase: $ARGUMENTS
 
 <process>
 Execute the review-phase workflow from @~/.claude/get-shit-done/workflows/review-phase.md end-to-end.
-Preserve all workflow gates (file extraction, parallel spawning, compilation, report generation).
+Preserve all workflow gates (file extraction, follow-up detection, parallel spawning, compilation, conflict resolution, auto-apply, convergence assessment, report generation).
 </process>

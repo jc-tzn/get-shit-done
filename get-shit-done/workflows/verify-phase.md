@@ -1,13 +1,14 @@
 <purpose>
-Verify phase goal achievement through two-stage review: spec compliance first, then code quality.
+Verify phase goal achievement through multi-stage review: spec compliance, automated quality, and optional multi-perspective code review.
 
 Executed by a verification subagent spawned from execute-phase.md.
 
-**Two stages catch different failure modes:**
+**Three stages catch different failure modes:**
 - Stage 1 (Spec Compliance): "Does the code deliver what the phase promised?"
-- Stage 2 (Code Quality): "Is the delivered code well-built?"
+- Stage 2 (Code Quality): "Is the delivered code well-built?" (lint, types, tests, anti-patterns)
+- Stage 3 (Parallel Code Review): "Did three independent reviewers find issues tooling missed?" (optional, config-driven)
 
-Code can perfectly match the spec but be poorly written. Code can be beautifully written but miss a requirement. Both stages must pass.
+Code can perfectly match the spec but be poorly written. Code can pass all linters but contain logic errors. All applicable stages must pass.
 </purpose>
 
 <core_principle>
@@ -22,7 +23,10 @@ Goal-backward verification:
 
 Then verify each level against the actual codebase.
 
-**Stage gate:** Stage 2 does NOT run if Stage 1 has blockers. Fix spec compliance first — there's no point reviewing code quality on code that doesn't deliver the spec.
+**Stage gates:**
+- Stage 2 does NOT run if Stage 1 has blockers. Fix spec compliance first.
+- Stage 3 does NOT run if Stage 2 has blockers. Fix automated quality first.
+- Stage 3 only runs when `workflow.parallel_review` is `true` in `.planning/config.json`.
 </core_principle>
 
 <required_reading>
@@ -248,6 +252,50 @@ Extract files modified in this phase from SUMMARY.md, scan each:
 Categorize: 🛑 Blocker (prevents goal) | ⚠️ Warning (incomplete) | ℹ️ Info (notable).
 </step>
 
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- STAGE 3: MULTI-PERSPECTIVE REVIEW (optional, config-driven)       -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<step name="stage3_parallel_review">
+**Stage 3 only runs when enabled in config.**
+
+```bash
+PARALLEL_REVIEW=$(node -e "try{const c=require('./.planning/config.json');console.log(c.workflow?.parallel_review||false)}catch{console.log(false)}")
+```
+
+**If `PARALLEL_REVIEW` is `false` or config missing:** Skip Stage 3 entirely. Proceed to `identify_human_verification`.
+
+**If `PARALLEL_REVIEW` is `true`:**
+
+Execute the review-phase workflow as a nested operation:
+
+```
+Task(
+  prompt="Run multi-perspective code review for phase {phase_number}.
+Phase directory: {phase_dir}
+Phase goal: {phase_goal}
+Execute the review-phase workflow end-to-end.
+Return the review status (review_clean, review_passed, review_blocked) and the report path.",
+  subagent_type="gsd-reviewer",
+  description="Stage 3: Multi-perspective review for Phase {phase}"
+)
+```
+
+Alternatively, if the orchestrator IS the main agent (not a subagent), invoke the review-phase workflow inline by following @~/.claude/get-shit-done/workflows/review-phase.md.
+
+**Read the review result:**
+```bash
+REVIEW_STATUS=$(grep "^status:" "$PHASE_DIR"/*-REVIEW.md 2>/dev/null | cut -d: -f2 | tr -d ' ')
+REVIEW_CRITICAL=$(grep "^critical:" "$PHASE_DIR"/*-REVIEW.md 2>/dev/null | cut -d: -f2 | tr -d ' ')
+```
+
+**Stage 3 gate:**
+- `review_clean` or `review_passed` → Stage 3 passes
+- `review_blocked` → Stage 3 fails (critical findings exist)
+
+Record Stage 3 result in VERIFICATION.md under `## Stage 3: Multi-Perspective Review`.
+</step>
+
 <step name="identify_human_verification">
 **Always needs human:** Visual appearance, user flow completion, real-time behavior (WebSocket/SSE), external service integration, performance feel, error message clarity.
 
@@ -257,17 +305,17 @@ Format each as: Test Name → What to do → Expected result → Why can't verif
 </step>
 
 <step name="determine_status">
-Combine both stages into final status:
+Combine all applicable stages into final status:
 
-**passed:** Stage 1 spec_passed AND Stage 2 quality_passed (lint + types + tests pass, no blocker anti-patterns).
+**passed:** Stage 1 spec_passed AND Stage 2 quality_passed AND (Stage 3 skipped OR Stage 3 review_passed/review_clean).
 
-**gaps_found:** Stage 1 spec_gaps OR Stage 2 quality_failed. Report which stage(s) failed.
+**gaps_found:** Stage 1 spec_gaps OR Stage 2 quality_failed OR Stage 3 review_blocked. Report which stage(s) failed.
 
-**human_needed:** Both stages pass automated checks but human verification items remain.
+**human_needed:** All stages pass automated checks but human verification items remain.
 
-**Score:** `verified_truths / total_truths` (Stage 1) + `quality_checks_passed / total_quality_checks` (Stage 2)
+**Score:** `verified_truths / total_truths` (Stage 1) + `quality_checks_passed / total_quality_checks` (Stage 2) + review status (Stage 3, if run)
 
-**In the report, separate the two stages clearly:**
+**In the report, separate stages clearly:**
 
 ```markdown
 ## Stage 1: Spec Compliance
@@ -280,9 +328,15 @@ Score: {N}/{M} truths verified
 Status: {quality_passed | quality_failed}
 
 [lint/types/tests results, anti-pattern scan, quality issues]
+
+## Stage 3: Parallel Code Review
+Status: {review_clean | review_passed | review_blocked | skipped}
+
+{If run: summary table from REVIEW.md, critical findings inline}
+{If skipped: "Stage 3 not enabled. Enable with workflow.parallel_review: true in .planning/config.json"}
 ```
 
-This separation lets fix plans target the right problem: spec gaps need implementation work, quality gaps need refactoring work.
+This separation lets fix plans target the right problem: spec gaps need implementation work, quality gaps need refactoring work, review findings need targeted fixes.
 </step>
 
 <step name="generate_fix_plans">
@@ -329,12 +383,18 @@ Orchestrator routes: `passed` → update_roadmap | `gaps_found` → create/execu
 **Stage 2: Code Quality**
 - [ ] Code quality gate run (lint, types, tests)
 - [ ] Anti-patterns scanned and categorized
-- [ ] Human verification items identified
+
+**Stage 3: Parallel Code Review (if enabled)**
+- [ ] Config checked for workflow.parallel_review
+- [ ] If enabled: 3 independent reviewer subagents spawned, REVIEW.md created
+- [ ] If enabled: review status incorporated into final determination
+- [ ] If disabled: Stage 3 marked as skipped in report
 
 **Final**
-- [ ] Overall status determined from both stages
-- [ ] Fix plans generated (if gaps_found) — tagged by stage (spec vs quality)
-- [ ] VERIFICATION.md created with two-stage report
+- [ ] Human verification items identified
+- [ ] Overall status determined from all applicable stages
+- [ ] Fix plans generated (if gaps_found) — tagged by stage (spec vs quality vs review)
+- [ ] VERIFICATION.md created with multi-stage report
 - [ ] Results returned to orchestrator
 
 </success_criteria>

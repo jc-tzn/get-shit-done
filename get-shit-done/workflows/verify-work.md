@@ -169,6 +169,53 @@ Write to `.planning/phases/XX-name/{phase_num}-UAT.md`
 Proceed to `present_test`.
 </step>
 
+<step name="surface_review_findings">
+**Before presenting the first test, check for existing code review findings.**
+
+```bash
+REVIEW_FILE=$(ls "$PHASE_DIR"/*-REVIEW.md 2>/dev/null | head -1)
+```
+
+**If REVIEW.md exists:**
+
+Extract critical and warning counts:
+```bash
+REVIEW_CRITICAL=$(grep "^critical:" "$REVIEW_FILE" 2>/dev/null | cut -d: -f2 | tr -d ' ')
+REVIEW_WARNINGS=$(grep "^warnings:" "$REVIEW_FILE" 2>/dev/null | cut -d: -f2 | tr -d ' ')
+REVIEW_STATUS=$(grep "^status:" "$REVIEW_FILE" 2>/dev/null | cut -d: -f2 | tr -d ' ')
+```
+
+**If critical > 0 (review_blocked):**
+```
+╔══════════════════════════════════════════════════════════════╗
+║  ⚠ CODE REVIEW FINDINGS — {N} critical issue(s)              ║
+╚══════════════════════════════════════════════════════════════╝
+
+The multi-perspective code review found critical issues:
+
+{Extract and display critical findings from REVIEW.md}
+
+These were flagged before UAT. Consider fixing them first:
+- Fix issues → re-run `/gsd:review-phase {X}`
+- Continue UAT anyway → type "continue"
+
+──────────────────────────────────────────────────────────────
+```
+
+Wait for user response. If "continue" → proceed to tests. Otherwise, exit UAT.
+
+**If warnings > 0 but no criticals (review_passed):**
+```
+ℹ Code review found {N} warning(s) — non-blocking. See {REVIEW_FILE} for details.
+```
+
+Proceed directly to first test.
+
+**If REVIEW.md does not exist:** Proceed directly to first test. No mention of code review.
+
+This step runs ONCE at the start of UAT, not before every test.
+</step>
+
 <step name="present_test">
 **Present current test to user:**
 
